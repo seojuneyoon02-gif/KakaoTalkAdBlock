@@ -1,0 +1,42 @@
+name: Build KakaoTalkAdBlock
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        arch: [amd64, 386, arm64]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Install go-winres
+        run: go install github.com/tc-hib/go-winres@latest
+
+      - name: Add Go bin to PATH
+        run: echo "$env:USERPROFILE\go\bin" >> $env:GITHUB_PATH
+        shell: powershell
+
+      - name: Build
+        shell: cmd
+        run: |
+          pushd winres
+          go-winres simply --icon icon.ico --arch ${{ matrix.arch }}
+          popd
+          set GOARCH=${{ matrix.arch }}
+          go build -o KakaoTalkAdBlock_${{ matrix.arch }}.exe -ldflags "-H windowsgui -s -w" .\cmd\main.go
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: KakaoTalkAdBlock-${{ matrix.arch }}
+          path: KakaoTalkAdBlock_${{ matrix.arch }}.exe
